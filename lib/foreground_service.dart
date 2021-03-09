@@ -1,27 +1,25 @@
 import 'dart:async';
 import 'dart:isolate';
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 
 class ForegroundService {
-  static const MethodChannel _mainChannel = const MethodChannel(
-      "org.thebus.foreground_service/main", JSONMethodCodec());
+  static const MethodChannel _mainChannel =
+      const MethodChannel("org.thebus.foreground_service/main", JSONMethodCodec());
 
   static MethodChannel _fromBackgroundIsolateChannel;
-  static Future<bool> get isBackgroundIsolate async =>
-      (await isBackgroundIsolateSetupComplete()) &&
-      (_fromBackgroundIsolateChannel != null);
 
-  static Future<T> _invokeMainChannel<T>(String method,
-      [dynamic arguments]) async {
+  static Future<bool> get isBackgroundIsolate async =>
+      (await isBackgroundIsolateSetupComplete()) && (_fromBackgroundIsolateChannel != null);
+
+  static Future<T> _invokeMainChannel<T>(String method, [dynamic arguments]) async {
     if (_fromBackgroundIsolateChannel == null) {
       return await _mainChannel.invokeMethod(method, arguments);
     } else {
-      return await _fromBackgroundIsolateChannel.invokeMethod(
-          "fromBackgroundIsolate", {"method": method, "arguments": arguments});
+      return await _fromBackgroundIsolateChannel
+          .invokeMethod("fromBackgroundIsolate", {"method": method, "arguments": arguments});
     }
   }
 
@@ -32,8 +30,7 @@ class ForegroundService {
   ///when sendToPort(message) is called in one isolate,
   ///messageHandler(message) will be invoked from the other isolate
   ///i.e. main_sendToPort -> background_messageHandler and vice-versa
-  static Future<void> setupIsolateCommunication(
-      Function(dynamic message) messageHandler) async {
+  static Future<void> setupIsolateCommunication(Function(dynamic message) messageHandler) async {
     _receiveHandler = messageHandler;
 
     if (_receivePort == null) {
@@ -53,14 +50,12 @@ class ForegroundService {
         }();
       });
 
-      final String portMappingName = (await isBackgroundIsolate)
-          ? _BACKGROUND_ISOLATE_PORT_NAME
-          : _MAIN_ISOLATE_PORT_NAME;
+      final String portMappingName =
+          (await isBackgroundIsolate) ? _BACKGROUND_ISOLATE_PORT_NAME : _MAIN_ISOLATE_PORT_NAME;
 
       IsolateNameServer.removePortNameMapping(portMappingName);
 
-      IsolateNameServer.registerPortWithName(
-          _receivePort.sendPort, portMappingName);
+      IsolateNameServer.registerPortWithName(_receivePort.sendPort, portMappingName);
     }
   }
 
@@ -69,8 +64,7 @@ class ForegroundService {
 
   static ReceivePort _receivePort;
 
-  static const String _MAIN_ISOLATE_PORT_NAME =
-      "org.thebus.foreground_service/MAIN_ISOLATE_PORT";
+  static const String _MAIN_ISOLATE_PORT_NAME = "org.thebus.foreground_service/MAIN_ISOLATE_PORT";
   static const String _BACKGROUND_ISOLATE_PORT_NAME =
       "org.thebus.foreground_service/BACKGROUND_ISOLATE_PORT";
 
@@ -85,9 +79,7 @@ class ForegroundService {
   /// i.e. primitives and lists/maps thereof
   static Future<void> sendToPort(dynamic message) async {
     final SendPort targetPort = IsolateNameServer.lookupPortByName(
-        (await isBackgroundIsolate
-            ? _MAIN_ISOLATE_PORT_NAME
-            : _BACKGROUND_ISOLATE_PORT_NAME));
+        (await isBackgroundIsolate ? _MAIN_ISOLATE_PORT_NAME : _BACKGROUND_ISOLATE_PORT_NAME));
 
     if (targetPort != null) {
       targetPort.send(message);
@@ -107,9 +99,8 @@ class ForegroundService {
       [Function serviceFunction, bool holdWakeLock = false]) async {
     //foreground service should only be started from the main isolate
     if (!(await isBackgroundIsolate)) {
-      final setupHandle = PluginUtilities.getCallbackHandle(
-              _setupForegroundServiceCallbackChannel)
-          .toRawHandle();
+      final setupHandle =
+          PluginUtilities.getCallbackHandle(_setupForegroundServiceCallbackChannel).toRawHandle();
 
       //don't know why anyone would pass null, but w/e
       final shouldHoldWakeLock = holdWakeLock ?? false;
@@ -135,16 +126,13 @@ class ForegroundService {
 
   ///get the function being executed periodically by the service
   static Future<Function> getServiceFunction() async =>
-      PluginUtilities.getCallbackFromHandle(
-          await _invokeMainChannel("getServiceFunctionHandle"));
+      PluginUtilities.getCallbackFromHandle(await _invokeMainChannel("getServiceFunctionHandle"));
 
   ///set the function being executed periodically by the service
   static Future<void> setServiceFunction(Function serviceFunction) async {
-    final serviceFunctionHandle =
-        PluginUtilities.getCallbackHandle(serviceFunction).toRawHandle();
+    final serviceFunctionHandle = PluginUtilities.getCallbackHandle(serviceFunction).toRawHandle();
 
-    await _invokeMainChannel(
-        "setServiceFunctionHandle", <dynamic>[serviceFunctionHandle]);
+    await _invokeMainChannel("setServiceFunctionHandle", <dynamic>[serviceFunctionHandle]);
   }
 
   ///get the execution period for the service function (get/setServiceFunction);
@@ -155,8 +143,7 @@ class ForegroundService {
   ///set the execution period for the service function (get/setServiceFunction)
   ///period is "minimum/best-effort" - will try to space executions with an interval that's *at least* this long
   static Future<void> setServiceIntervalSeconds(int intervalSeconds) async {
-    await _invokeMainChannel(
-        "setServiceFunctionInterval", <dynamic>[intervalSeconds]);
+    await _invokeMainChannel("setServiceFunctionInterval", <dynamic>[intervalSeconds]);
   }
 
   ///tells the foreground service to also hold a wake lock
@@ -180,10 +167,8 @@ class ForegroundService {
   ///sets whether the foreground service should continue running after the app is killed
   ///for instance when it's swiped off of the recent apps list
   ///default behavior = true = keep service running after app killed
-  static Future<void> setContinueRunningAfterAppKilled(
-      bool shouldContinueRunning) async {
-    await _invokeMainChannel(
-        "setContinueRunningAfterAppKilled", <dynamic>[shouldContinueRunning]);
+  static Future<void> setContinueRunningAfterAppKilled(bool shouldContinueRunning) async {
+    await _invokeMainChannel("setContinueRunningAfterAppKilled", <dynamic>[shouldContinueRunning]);
   }
 
   ///if coordinating communication between foreground service function
@@ -209,10 +194,8 @@ class ForegroundService {
   ///
   /// when (true):
   ///   instance1 start -> 5 seconds -> instance2 start -> 5 seconds -> i3 start
-  static Future<void> setServiceFunctionAsync(
-      bool isServiceFunctionAsync) async {
-    await _invokeMainChannel(
-        "setServiceFunctionAsync", <dynamic>[isServiceFunctionAsync]);
+  static Future<void> setServiceFunctionAsync(bool isServiceFunctionAsync) async {
+    await _invokeMainChannel("setServiceFunctionAsync", <dynamic>[isServiceFunctionAsync]);
   }
 }
 
@@ -225,28 +208,32 @@ class ForegroundServiceNotification {
   //TODO: make safe?
   ///(*see README for warning about notification-related "gets")
   Future<AndroidNotificationPriority> getPriority() async =>
-      _priorityFromString(
-          (await _invokeMainChannel("getNotificationPriority")) as String);
+      _priorityFromString((await _invokeMainChannel("getNotificationPriority")) as String);
 
   ///users are allowed to change some app notification via the system UI;
   ///this probably won't work properly if they've done so
   ///(see android plugin implementation for details)
   Future<void> setPriority(AndroidNotificationPriority newPriority) async {
-    await _invokeMainChannel(
-        "setNotificationPriority", <dynamic>[describeEnum(newPriority)]);
+    await _invokeMainChannel("setNotificationPriority", <dynamic>[describeEnum(newPriority)]);
   }
 
   ///(*see README for warning about notification-related "gets")
-  Future<String> getTitle() async =>
-      await _invokeMainChannel("getNotificationTitle");
+  Future<String> getTitle() async => await _invokeMainChannel("getNotificationTitle");
 
   Future<void> setTitle(String newTitle) async {
     await _invokeMainChannel("setNotificationTitle", <dynamic>[newTitle]);
   }
 
+  Future<void> setUploadProgress(int newProgress) async {
+    await _invokeMainChannel("setUploadProgress", <dynamic>[newProgress]);
+  }
+
+  Future<void> setEnableUploadProgress(bool enableProgress) async {
+    await _invokeMainChannel("setEnableUploadProgress", <dynamic>[enableProgress]);
+  }
+
   ///(*see README for warning about notification-related "gets")
-  Future<String> getText() async =>
-      await _invokeMainChannel("getNotificationText");
+  Future<String> getText() async => await _invokeMainChannel("getNotificationText");
 
   Future<void> setText(String newText) async {
     await _invokeMainChannel("setNotificationText", <dynamic>[newText]);
@@ -286,8 +273,7 @@ class ForegroundServiceNotification {
 
       //this should never happen
       default:
-        throw new Exception(
-            "returned priority could not be translated: $priorityString");
+        throw new Exception("returned priority could not be translated: $priorityString");
     }
   }
 }
@@ -299,11 +285,11 @@ enum AndroidNotificationPriority { LOW, DEFAULT, HIGH }
 //the android side will use this function as the entry point
 //for the background isolate that will be used to execute dart handles
 void _setupForegroundServiceCallbackChannel() async {
-  const MethodChannel _callbackChannel = MethodChannel(
-      "org.thebus.foreground_service/callback", JSONMethodCodec());
+  const MethodChannel _callbackChannel =
+      MethodChannel("org.thebus.foreground_service/callback", JSONMethodCodec());
 
-  ForegroundService._fromBackgroundIsolateChannel = MethodChannel(
-      "org.thebus.foreground_service/fromBackgroundIsolate", JSONMethodCodec());
+  ForegroundService._fromBackgroundIsolateChannel =
+      MethodChannel("org.thebus.foreground_service/fromBackgroundIsolate", JSONMethodCodec());
 
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -312,8 +298,7 @@ void _setupForegroundServiceCallbackChannel() async {
     final CallbackHandle handle = CallbackHandle.fromRawHandle(args[0]);
 
     await PluginUtilities.getCallbackFromHandle(handle)();
-    await ForegroundService._invokeMainChannel(
-        "backgroundIsolateCallbackComplete");
+    await ForegroundService._invokeMainChannel("backgroundIsolateCallbackComplete");
   });
 
   await ForegroundService._invokeMainChannel("backgroundIsolateSetupComplete");

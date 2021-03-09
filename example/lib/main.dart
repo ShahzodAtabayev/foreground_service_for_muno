@@ -13,15 +13,12 @@ void maybeStartFGS() async {
   ///but if the foreground service stayed alive,
   ///this does not need to be re-done
   if (!(await ForegroundService.foregroundServiceIsStarted())) {
-    await ForegroundService.setServiceIntervalSeconds(5);
+    // await ForegroundService.setServiceIntervalSeconds(5);
 
     //necessity of editMode is dubious (see function comments)
     await ForegroundService.notification.startEditMode();
-
-    await ForegroundService.notification
-        .setTitle("Example Title: ${DateTime.now()}");
-    await ForegroundService.notification
-        .setText("Example Text: ${DateTime.now()}");
+    await ForegroundService.notification.setTitle("Example Title: ${DateTime.now()}");
+    await ForegroundService.notification.setText("Example Text: ${DateTime.now()}");
 
     await ForegroundService.notification.finishEditMode();
 
@@ -39,6 +36,9 @@ void maybeStartFGS() async {
 void foregroundServiceFunction() {
   debugPrint("The current time is: ${DateTime.now()}");
   ForegroundService.notification.setText("The time was: ${DateTime.now()}");
+  // ForegroundService.notification
+  ForegroundService.notification.setEnableUploadProgress(false);
+  // ForegroundService.notification.setUploadProgress(25);
 
   if (!ForegroundService.isIsolateCommunicationSetup) {
     ForegroundService.setupIsolateCommunication((data) {
@@ -89,8 +89,7 @@ class _MyAppState extends State<MyApp> {
         body: Center(
             child: Column(
           children: <Widget>[
-            Text('Foreground Service Example',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('Foreground Service Example', style: TextStyle(fontWeight: FontWeight.bold)),
             Padding(padding: EdgeInsets.all(8.0)),
             Text(_appMessage, style: TextStyle(fontStyle: FontStyle.italic))
           ],
@@ -104,17 +103,25 @@ class _MyAppState extends State<MyApp> {
               tooltip: "Toggle Foreground Service On/Off",
             ),
             FloatingActionButton(
+              child: Text("A"),
+              onPressed:()async{
+                await ForegroundService.notification.startEditMode();
+                await ForegroundService.notification.setTitle("wwertyuioiuyt");
+                await ForegroundService.notification.finishEditMode();
+              },
+              tooltip: "Toggle Foreground Service On/Off",
+            ),
+            FloatingActionButton(
               child: Text("T"),
               onPressed: () async {
-                if (await ForegroundService
-                    .isBackgroundIsolateSetupComplete()) {
+                if (await ForegroundService.isBackgroundIsolateSetupComplete()) {
                   await ForegroundService.sendToPort("message from main");
                 } else {
                   debugPrint("bg isolate setup not yet complete");
                 }
               },
               tooltip: "Send test message to bg isolate from main app",
-            )
+            ),
           ],
           mainAxisAlignment: MainAxisAlignment.end,
         ),
